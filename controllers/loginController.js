@@ -1,26 +1,37 @@
 "use strict";
 
+const firebase = require("../db");
+const firestore = firebase.firestore();
+var md5 = require("md5");
 const storage = require("../storage");
 const bucket = storage.bucket();
 
-const getAllAccount = async (req, res, next) => {
+const loginController = async (req, res, next) => {
   try {
-    const allStorage = await bucket.getFiles();
-    const fileLinks = allStorage[0].map((file) => {
-      const token =
-        file.metadata.metadata.firebaseStorageDownloadTokens.split(",")[0];
-      return {
-        name: file.name,
-        link: `https://firebasestorage.googleapis.com/v0/b/keep-image.appspot.com/o/${file.name}?alt=media&token=${token}`,
-      };
-    });
-    const json = JSON.stringify(fileLinks);
-    return res.status(200).send(json);
+    const username = req.params.username;
+    const password = req.params.password;
+    const account = await firestore
+      .collection("Login")
+      .where("Username", "==", username)
+      .where("Password", "==", password);
+    const data = await account.get();
+    const AccountArray = [];
+    if (data.empty) {
+      res.status(404).send("ไม่พบข้อมูลใด");
+    } else {
+      data.forEach((doc) => {
+        res.send({
+          id: doc.id,
+          username: doc.data().Username,
+          type: doc.data().type,
+        });
+      });
+    }
   } catch (error) {
     res.status(400).send(error.message);
   }
 };
 
 module.exports = {
-  getAllAccount,
+  loginController,
 };
